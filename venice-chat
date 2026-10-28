@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# venice-chat — send a message to your logged-in Venice.ai chat and print the reply.
+# Usage: venice-chat [session] [--wait] "message"
+#   --wait  sleep until the daily chat quota resets instead of failing
+set -euo pipefail
+SESSION="venice"
+WAIT=0
+for arg in "$@"; do
+  case "$arg" in
+    --wait) WAIT=1 ;;
+  esac
+done
+shift 2>/dev/null || true
+MSG="${*:-What is 2+2?}"
+export PATH="$PATH:$(uv tool dir 2>/dev/null)"
+
+# --wait: read the public quota endpoint and sleep until reset if empty
+if [ "$WAIT" = "1" ]; then
+  RL="$(browser-act --session "$SESSION" network requests --filter "rate-limits" 2>/dev/null \
+        | grep -v '^#' | grep 'rate-limits' | tail -1 | cut -d, -f1 || true)"
+  if [ -n "$RL" ]; then
+    BODY="$(browser-act --session "$SESSION" network request "$RL" 2>/dev/null \
+            | sed -n 's/.*response_body=\(.*\)/\1/p' | head -1 || true)"
+    REMAINING="$(printf '%s' "$BODY" | grep -o '"chat":{[^}]*}' | grep -o '"remaining":[0-9]*' | head -1 | grep -o '[0-9]*')"
+    RESET_AT="$(printf '%s' "$BODY" | grep -o '"resetAt":[0-9]*' | head -1 | grep -o '[0-9]*')"
+    NOW=$(( $(date +%s) * 1000 ))
+    if [ "${REMAINING:-1}" = "0" ] && [ -n "$RESET_AT" ]; then
+      SLEEP_MS=$(( RESET_AT - NOW ))
+      SLEEP_S=$(( SLEEP_MS / 1000 ))
+      if [ "$SLEEP_S" -gt 0 ]; then
+        echo "Chat quota exhausted. Sleeping ${SLEEP_S}s until reset..." >&2
+        sleep "$SLEEP_S"
+      fi
+    fi
+  fi
+fi
+
+browser-act --session "$SESSION" network clear >/dev/null 2>&1 || true
+browser-act --session "$SESSION" input --selector "textarea.chakra-textarea" --text "$MSG" >/dev/null 2>&1
+browser-act --session "$SESSION" keys Enter >/dev/null 2>&1
+
+for i in $(seq 1 45); do
+  sleep 1
+  if browser-act --session "$SESSION" get markdown 2>/dev/null | grep -qiE "worked for|exceeded|rate limit"; then
+    break
+  fi
+done
+
+browser-act --session "$SESSION" get markdown 2>/dev/null \
+  | grep -viE "Venice \| Private|^Search|^More|^Folders|^Chats|Invite|Venice Guest|Use Classic|Sub-agent|Loading|Preparing|Select to|To pick|While dragging|Press space|arrow keys|escape to cancel" \
+  | grep -v '^$' \
+  | tail -8
