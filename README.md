@@ -1,5 +1,24 @@
 # venice-free-ai-chat
 
+## Ultimate: one command
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Parsa-Nasiri/venice-free-ai-chat/main/install.sh | bash
+#   -> installs the `venice` CLI globally (PATH)
+venice deploy        # checks Cloudflare: Worker live -> use it;
+                      # no CF_API_TOKEN -> opens the token page in your browser
+                      #   (grant: Account -> Workers Scripts: Edit)
+                      # token set       -> deploys to the edge with wrangler
+venice chat "hi"      # routes through your edge Worker (auto-IP-rotation);
+                      # or falls back to local venice_proxy.py if no Worker.
+venice doctor         # full status of worker + local proxy + config
+```
+
+`venice` is the single entrypoint. It auto-detects a live Cloudflare Worker; if none exists
+and you have no `CF_API_TOKEN`, it opens `https://dash.cloudflare.com/profile/api-tokens`
+in your browser (you create the token, then re-run `CF_API_TOKEN=... CF_ACCOUNT_ID=... venice deploy`).
+
+
 Free, **account-less** access to Venice.ai's uncensored model
 (`DeepSeek V4.1 Flash` / `deepseek-v4-1-flash-free`) as an **OpenAI-compatible API**,
 plus a browser-driven fallback.
