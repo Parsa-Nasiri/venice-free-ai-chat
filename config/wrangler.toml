@@ -1,0 +1,10 @@
+name = "venice-free-ai-proxy"
+main = "worker.js"  # Ultimate proxy with Cloudflare edge IP auto-rotation
+account_id = "YOUR_ACCOUNT_ID"  # wrangler will prompt / you set in deploy
+compatibility_date = "2026-10-28"
+
+# The proxy's own key clients must send as `Authorization: Bearer <VENICE_KEY>`.
+# Set via:  wrangler secret put VENICE_KEY
+[vars]
+# base upstream Venice endpoint (no auth needed; attested per request)
+VENICE_BASE = "https://outerface.venice.ai"

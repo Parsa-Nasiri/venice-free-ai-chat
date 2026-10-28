@@ -134,7 +134,8 @@ class H(http.server.BaseHTTPRequestHandler):
             self._h(e.code); self.wfile.write(e.read()[:1000]); return
         except Exception:
             self._h(502); self.wfile.write((b'{"error":"all proxies failed"}\n' if PROXIES else b'{"error":"request failed"}\n')); return
-        self._h(200, ct="text/event-stream", extra={"Cache-Control":"no-cache","Connection":"keep-alive"})
+        # Connection: close => client sees EOF => stops "Thinking" (OpenCode/OpenRouter hang on keep-alive + no Content-Length)
+        self._h(200, ct="text/event-stream", extra={"Cache-Control":"no-cache","Connection":"close"})
         for line in src:  # streaming: yields lines as Venice emits them
             try: line = line.decode("utf-8","replace").rstrip("\r\n")
             except: continue
@@ -152,6 +153,7 @@ class H(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(("data: "+json.dumps({"choices":[{"delta":{"role":"assistant","content":delta},"index":0}],"object":"chat.completion.chunk"})+"\n\n").encode())
                     self.wfile.flush()
         self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
 
 def _selftest():
     """Proves the auto-IP-retry: bad:1 (429) -> bad:2 (URLError) -> good:3 (200),

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# venice shim — installed to PATH by install.sh. Runs the python core next to it.
+D="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$D/venice.py" "$@"
