@@ -1,1 +1,2 @@
-@python "%~dp0venice.py" %*
+@echo off
+python "%~dp0..\venice.py" %*
